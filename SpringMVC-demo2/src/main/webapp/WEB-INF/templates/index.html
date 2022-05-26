@@ -8,6 +8,48 @@
     <h1>首页</h1>
     <br/>
     <a th:href="@{/testRequestMapping}">注解@RequestMapping放在类上</a>
+    <br/>
     <a th:href="@{/hello/testRequestMapping}">注解@RequestMapping放在类上</a>
+    <br/>
+    <a th:href="@{/hello/testRequestMapping}">get请求</a>
+    <br/>
+    <form th:action="@{/hello/test}" method="post">
+        <input type="submit" value="post请求">
+    </form>
+
+    <br/>
+    <form th:action="@{/hello/testPut}" method="put">
+        <input type="submit" value="put请求">
+    </form>
+
+    <br/>
+    <a th:href="@{/hello/testParams1}">请求参数1：  params = {"username"} 表示请求中必须含有关建字（key）username，对属性值（value）不做要求</a>
+    <br/>
+    <a th:href="@{/hello/testParams2}">请求参数2：  params = {"!username"} 表示请求中不能含有关建字（key）username</a>
+    <br/>
+    <a th:href="@{/hello/testParams3}">请求参数3：  params = {"username=admin"} 表示请求中必须含有关建字（key）username，且属性值（value）必须为admin</a>
+    <br/>
+    <a th:href="@{/hello/testParams4}">请求参数4：  params = {"username!=admin"} 表示请求中必须含有关建字（key）username，且属性值（value）不能为为admin</a>
+
+
+    <br/>
+    <a th:href="@{/hello/testParams1?username}">请求参数1：  params/headers = {"username"}</a>
+    <br/>
+    <a th:href="@{/hello/testParams2}">请求参数2：  params/headers = {"!username"}</a>
+    <br/>
+    <a th:href="@{/hello/testParams3?username=admin}">请求参数3：  params/headers = {"username=admin"}</a>
+    <br/>
+    <a th:href="@{/hello/testParams4}">请求参数4：  params/headers = {"username!=admin"}</a>
+    <br/>
+
+
+    <a th:href="@{/hello/}" >?表示任意单个字符</a>
+    <br/>
+    <a th:href="@{/hello/}" >*表示任意的0个或多个字符</a>
+    <br/>
+    <a th:href="@{/hello/}" >**表示任意的一层或多层目录</a>
+
+    <br/>
+    <a th:href="@{/hello/testPath/1}">springMVC中路径的占位符测试使用</a>
 </body>
 </html>
