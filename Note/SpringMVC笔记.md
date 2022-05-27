@@ -485,49 +485,250 @@ public String testPath(@PathVariable("id") Integer id,@PathVariable("username") 
 
 原理：前端处理器DispatcherServlet调用控制期响应方法时，会根据方法的参数自动注入属性。这其中就包括HttpServletRequest request。【直接使用，不需要加上注解】
 
+```java
+@RequestMapping("/testServletAPI")
+//前端控制器DispatcherServlet 会根据属性自动输入 HttpServletRequest就在其中
+public String testServletAPI(HttpServletRequest request) {
+    String username = request.getParameter("username");
+    String password = request.getParameter("password");
+    System.out.println(username + ":" + password);
+    return "sucess";
+}
+```
 
 
 
+## 方法2：通过控制器方法的形参获取请求参数
+
+***注意：该方法要求控制器方法的形参名称要和请求的key值一样，才能被复制 过来！***
+
+```html
+<!-- 请求参数的key为 username password -->
+<a th:href="@{/testControlMethod(username='admin',password=123456,hobby="sing",hobby="jump",hobby="rap")}">测试控制器方法形参传递方式 获取请求参数</a>
+```
+
+```java
+@RequestMapping("/testControlMethod")
+//控制器方法形参名 必须和  请求参数的key 一样
+//如果有重复key值如多选，可以使用string数组接收
+public String testControlMethod(String username,String password,String[] hobby) {
+    System.out.println(username + ":" + password);
+    for (String s : hobby) {
+            System.out.print("爱好：" + s);
+        }
+    return "success.html";
+}
+```
+
+可以不需要区分请求有无多选，都可以用一个同名形参：
+
+```java
+//此时 如果是多选则结果为多个值的 逗号,拼接而成
+public String testControlMethod(String hobby) {
+    //此时hobby=sing,jump,rap
+    return "success.html";
+}
+```
+
+***问题：如果控制器方法形参和请求参数不一致如何解决？***
+
+@RequestParam注解来建立参数间映射关系
+
+```java
+//前端传递key为：user_name  而控制器方法形参为：username
+public String testControlMethod(@RequestParam("user_name") String username) {
+    //此时hobby=sing,jump,rap
+    return "success.html";
+}
+
+//本质还是参数同名对应，如果注解里key不同一样是对应不上
+```
 
 
 
+## ***@RequestParam注解解析***
+
+==@RequestParam注解将请求参数和控制器方法形参建立关系，用于获取请求参数！==
+
+```java
+@Target({ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface RequestParam {
+    @AliasFor("name") //alias 别名 表示value有个别名为name
+    String value() default "";
+
+    @AliasFor("value") //alias 别名 表示name有个别名为value
+    String name() default "";
+	
+    //require表示必须，即注解中的value/name值 ，请求中必须要包含否则就会报错 见下面例子：
+    //400错误 Required parameter “user_name” is not present
+    boolean required() default true; 
+	
+    //不管required值为true或false，当注解的value所指定的请求参数没有传输或者传输的值为""时，则使用默认值给形参赋值
+    String defaultValue() default "\n\t\t\n\t\t\n\ue000\ue001\ue002\n\t\t\t\t\n";
+}
+```
+
+> defaultValue即如果请求中没有找到对应的value/name(如：user_name) 则为null（当然可以自己定义某个值），还有一种情况有value/name，但是没有对应值（如：user_name=，传递空）此时也会使用默认值
+
+例如（``针对属性：required`）：
+
+请求链为：`（没有@RequestParam("user_name") 修饰的user_name,就算传递username也是会报错的）`
+
+```sh
+http://localhost:8080/demo2/testControlMethod?password=123456&hobby=sing&hobby=jump&hobby=rap
+```
+
+处理请求的对应控制器方法为：
+
+```java
+@RequestMapping("/testControlMethod")
+//RequestParam required默认为true 则请求中必须包含key为user_name （当然可以自己改成required=false）
+public String testControlMethod(@RequestParam("user_name") String username,String password,String[] hobby) {
+    System.out.println(username + ":" + password);
+    for (String s : hobby) {
+        System.out.print("爱好：" + s);
+    }
+    return "success.html";
+}
+```
+
+此时服务器就会报错：==400错误 Required parameter “user_name” is not present （必须的参数user_name不存在）==
+
+`可以用此限制来控制前端传递参数必须包含哪些参数。`
 
 
 
+## @RequestHeader解析
+
+和注解@RequestParam完全一样，也是有 `value,name,required,defaultValue`属性。
+
+如果要获取请求头信息，形参必须要加上@RequestHeader注解
+
+==@RequestHeader将请求头信息和控制器方法形参建立联系，用于获取请求头！==
+
+```java
+@RequestMapping("/testRequestHeader")
+//RequestHeader每次只能回去某一个请求头（如：host，）
+public String testRequestHeader(@RequestHeader("host") String host) {
+    System.out.println("host:"+ host);
+    return "success";
+}
+```
+
+## @CookieValue解析
+
+和注解@RequestParam完全一样，也是有 `value,name,required,defaultValue`属性。
+
+如果要获取请求cookie信息，形参必须要加上@CookieValue注解
+
+==@CookieValue将请求头信息和控制器方法形参建立联系，用于获取cookie！==
+
+```java
+@RequestMapping("/testCookie")
+//value参数为cookie的id，即每次只能查找指定key值的的cookie,得到的是指定cookie的value值
+public String testCookie(@CookieValue("JSESSIONID") String cookie) {
+    System.out.println("cookie = " + cookie);
+    return "success";
+}
+```
+
+## @RequestBody解析
+
+即获取所有请求体，就是请求?后面的全部（请求参数） 。仅POST请求才有
 
 
 
+## 方法3：通过POJO获取请求参数（必须有实体Bean）
+
+例如当我们想要注册一个用户时，获取的参数都是User实体Bean中的属性，则此时Spring提供了对应的方法。
+
+***请求的参数名key必须和实体类的属性名完全一致，Spring会自动创建对应Bean和属性注入***
+
+原理就是：IOC
+
+```java
+@RequestMapping("/testPojo")
+//测试通过POJO传递参数
+public String testPojo(User user) {
+    //请求参数key 可以比User属性值 少，因为是set方法 参数多少都无所谓
+    System.out.println(user);
+    return "success";
+}
+
+//细节：如果testPojo方法中有多个User对象的形参那么spring都会自动创建即属性注入即属性值都一样
+```
+
+## ***乱码***
+
+如果是tomcat控制台：
+
+tomcat控制台（Dos窗口）输出乱码的话，在tomcat的conf目录下的logging.properties文件中修改为windows编码GBK（默认utf-8）
+
+```properties
+java.util.logging.ConsoleHandler.level = FINE
+java.util.logging.ConsoleHandler.formatter = org.apache.juli.OneLineFormatter
+#默认是utf-8改成gbk就好了（因为Windows默认gbk，看操作系统）
+java.util.logging.ConsoleHandler.encoding = GBK 
+```
 
 
 
+### 如果是get请求：
 
+理论上是不会有乱码的，如果有乱码就是tomcat服务器的乱码。可以在tomcat下conf目录下的server.xml中配置  URIEncoding="utf-8"
 
+```xml
+<!-- 配置tomcat端口的地方 配置tomcat编码-->
+<Connector port="8080" protocol="HTTP/1.1" 
+           maxThreads="1000" minSpareThreads="15" maxSpareThreads="50"
+           acceptCount="1000"
+           connectionTimeout="20000" 
+           redirectPort="8443" 
+           useBodyEncodingForURI="true"               
+           disableUploadTimeout="true" URIEncoding="utf-8" maxPostSize="0"
+           />
+```
 
+### 如果是post请求：
 
+`细节：因为servlet就是如果你已经获取了请求的参数，那么你再设置request的字符编码是不会生效的。所以如果使用了springMVC框架，无法直接使用request来设置请求编码。因为请求已经或被springMVC中的前端处理器DispatcherServlet接受过参数了，因此如果想要解决乱码问题需要在web.xml中使用Filter过滤器配置编码规则（这是因为服务器启动，加载Filter过滤器信息比Servlet（DispatcherServlet）更早运行。）`
 
+```java
+//程序加载顺序
+ServletContextListener监听器---> Filter过滤器 ---> Servlet程序
 
+//ServletContextListener监听器 监听ServletContext的创建和销毁，只执行一次 【不适合处理】
+//Filter过虑器适合  因为每次都可以允许只要设置了过滤路径
+```
 
+***web.xml中注册Spring自带的filter过虑器解决乱码***
 
+```xml
+<!--    注册spring过滤器，在DispatcherServlet前 设置字符编码来处理乱码-->
+  <filter>
+      <filter-name>CharacterEncodingFilter</filter-name>
+      <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+      
+      <!-- 必须设置encoding  否则不生效-->
+      <init-param>
+        <param-name>encoding</param-name>
+        <param-value>utf-8</param-value>
+      </init-param>
+      
+  <!--    源码里设置编码格式 需要设置encoding 和forceResponseEncoding-->
+      <init-param><!-- x-->
+        <param-name>forceResponseEncoding</param-name>
+        <param-value>true</param-value>
+      </init-param>
+  </filter>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  <filter-mapping>
+      <filter-name>CharacterEncodingFilter</filter-name>
+      <url-pattern>/*</url-pattern>
+  </filter-mapping>
+```
 
 
 
