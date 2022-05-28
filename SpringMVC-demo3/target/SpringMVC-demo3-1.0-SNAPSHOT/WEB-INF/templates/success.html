@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>成功</title>
+</head>
+<body>
+    <h1>success</h1> <br/>
+<!--    相当于el表达式:
+         设置一个 th:text="${key}"属性告诉thymeleaf这是一个域对象
+
+         request域：直接写键key
+         session域：写session.key
+         servletContext域：写application.key
+         -->
+    request域：<p th:text="${testRequestByScope}"></p> <br/>
+    session域：<p th:text="${session.sessionKey}"></p> <br/>
+    servletContext域：<p th:text="${application.servletContextKey}"></p> <br/>
+</body>
+</html>

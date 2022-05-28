@@ -730,17 +730,271 @@ ServletContextListener监听器---> Filter过滤器 ---> Servlet程序
   </filter-mapping>
 ```
 
+# 五、域对象共享数据
+
+## 1、使用ServletAPI向request域对象共享数据
+
+```Java
+/**
+  * 通过原生的servlet，来设置request域对象属性值
+  * @param request 请求
+  * @return 成功页面
+  */
+@RequestMapping("/testRequestByServletAPI")
+public String testRequestByServletAPI(HttpServletRequest  request) {
+    request.setAttribute("testRequestByScope","hello,servletAPI");
+
+    HttpSession session = request.getSession();
+    session.setAttribute("sessionKey","sessionScope");
+
+    ServletContext servletContext = request.getServletContext();
+    servletContext.setAttribute("servletContextKey","servletContextScope");
+    //这个是请求转发：1、web-info下重定向访问不了 2、地址栏地址没变化
+    return "success";
+}
+```
+
+***thymeleaf使用域对象：***
+
+```html
+<body>
+    <h1>success</h1> <br/>
+<!--    相当于el表达式:
+         设置一个 th:text="${key}"属性告诉thymeleaf这是一个域对象
+
+         request域：直接写键key
+         session域：写session.key
+         servletContext域：写application.key
+         -->
+    request域：<p th:text="${testRequestByScope}"></p> <br/>
+    session域：<p th:text="${session.sessionKey}"></p> <br/>
+    servletContext域：<p th:text="${application.servletContextKey}"></p> <br/>
+</body>
+```
+
+## 2、SpringMVC：使用ModelAndView对象向request域对象共享数据（建议使用）
+
+model：就是指向域对象共享数据
+
+view：试图名称经过视图解析器（thymeleaf）解析，跳转到指定页面的过程
+
+```java
+/**
+ *两个功能：1、向request域共享数据；2、设置视图名称
+ * @return 返回值必须是ModelAndView类型的给前端控制器DispatcherServlet使用（才能解析跳转到指定页面），因为其有两个功能：模型和视图，因此必须返回这个
+ */
+@RequestMapping("/testModelAndView")
+public ModelAndView testModelAndView() {
+    ModelAndView view = new ModelAndView();
+    //处理模型数据，即向请求域request域共享数据
+    view.addObject("testRequestByScope","hello,ModelAndView");
+
+    //设置视图名称，返回给前端处理器解析
+    view.setViewName("success");
+    return view;
+}
+```
+
+## 3、SpringMVC：使用Model对象向request域共享数据
+
+【实际运行实现类BindingAwareModelMap】
+
+底层就是： ConcurrentHashMap  线程安全的
+
+```java
+/**
+ * 使用Model对象向request域共享数据
+ * @param model Model类型的形参，就是ModelAndView中的Model，会被SpringMVC自动注入
+ * @return 成功页面
+ */
+@RequestMapping("/testModel")
+public String testModel(Model model) { //肯定是传参拿，否则自己创建Model，SpringMVC怎么知道呢？
+    model.addAttribute("testRequestByScope","hello,Model");
+    return "success";
+}
+```
+
+## 4、SpringMVC：使用Map集合对象向request域共享数据
+
+就是Map   【实际运行实现类BindingAwareModelMap】
+
+```java
+@RequestMapping("/testMap")
+public String testMap(Map<String,Object> map) {
+    map.put("testRequestByScope","hello,Map");
+    return "success";
+}
+```
+
+## 5、SpringMVC：使用ModelMap对象向request域共享数据
+
+底层：LinkedHashMap   【实际运行实现类BindingAwareModelMap】
+
+```java
+@RequestMapping("/testModelMap")
+public String testModelMap(ModelMap map) {
+   map.addAttribute("testRequestByScope","hello,ModelMap");
+   return "success";
+}
+```
+
+## 6、分析Model，Map和ModelMap之间的关系
+
+`三者的实际运行实现类都是BindingAwareModelMap，BindingAwareModelMap的父类ExtendedModelMap又继承了ModelMap类（继承了LinkedHashMap   ），实现了Model接口`
+
+![](img\Model-Map-ModelMap.png)
+
+```java
+public interface Model {}
+public class ModelMap extends LinkedHashMap<String, Object> {}
+public class ExtendedModelMap extends ModelMap implements Model {}
+public class BindingAwareModelMap extends ExtendedModelMap {}
+//因为SpringMVC传递过来的实际底层就是 BindingAwareModelMap对象,而其又继承了ExtendedModelMap
+//所以控制器方法传参可以放：
+	//Model：实际运行类父类---实现的接口，当然可以引用（多态）
+	//ModelMap：实际运行类父类---继承的类，当然可以引用（多态）
+	//Map:实际运行类父亲的父亲ModelMap，实现了LinkedHashMap->Map
+```
+
+***总结：***
+
+`建议使用ModelAndView进行request域数据共享，因为最后还是会把Map，Model和ModelMap封装成ModeAndView（servletAPI最终也是封装成ModelAndView）`
+
+## 7、向session域共享数据，建议使用原生的SessionAPI
+
+```java
+@RequestMapping("/testSession")
+public String testSession(HttpSession session) {
+    session.setAttribute("sessionKey","session域");
+    return "success";
+}
+```
+
+## 8、往Application域即ServletContext域共享数据，建议使用原生的SessionAPI
+
+```java
+@RequestMapping("testServletContext")
+//通过HttpSession获取
+public String testServletContext(HttpSession httpSession) {
+    ServletContext servletContext = httpSession.getServletContext();
+    servletContext.setAttribute("servletContextKey","hello,application");
+    return "success";
+}
+```
+
+# 六、SpringMVC的视图
+
+SpringMVC中的视图就是View接口（就是ModelAndView中的View），视图的作用就是渲染数据，将模型Model中的数据展示给用户。
+
+SpringMVC视图的种类很多，默认有转发视图，重定向视图
+
++ `转发视图 InternalResourceView`==视图名称以forward:为前缀==
++ `重定向视图 RedirectView`。 ==视图名称以redirect:为前缀==
+
++ `当工程引入jstl依赖时，转发视图InternalResourceView会自动转化为jstlView`
+
++ `如果视图的是技术为thymeleaf，在SpringMVC的配置文件中需要配置thymeleaf的视图解析器，由此视图解析器解析之后得到的是thymeleafView` ==视图名称没有任何前缀==
+
+## 1、ThymeleafView
+
+`如果创建的视图没有任何前缀（forward或redirect），则该视图才会被thymeleaf解析，得到ThymeleafView`,最后会通过==转发方式跳转==
+
+```java
+@RequestMapping("/testThymeleaf")
+public String testThymeleaf() {
+    return "success";//没有任何前缀
+}
+```
+
+> ```java
+> //部分源码如下
+> //DispatcherServlet中 processDispatchResult解析模型数据
+> this.processDispatchResult(processedRequest, response, mappedHandler, mv, (Exception)dispatchException);
+> 
+> //processDispatchResult方法中又调用render 专门用来解析
+> if (mv != null && !mv.wasCleared()) {//wasCleared 表示自己有在SpringMVC配置文件中配置的thymeleaf模版
+>     this.render(mv, request, response);
+>     ...
+> }
+> 
+> //render方法内部调用resolveViewName 根据SpringMVC配置的thymeleaf模版优先级Order进行数据渲染
+> view = this.resolveViewName(viewName, mv.getModelInternal(), locale, request);
+> 
+> //resolveViewName函数内部就是迭代渲染Model
+> protected View resolveViewName(String viewName, @Nullable Map<String, Object> model, Locale locale, HttpServletRequest request) throws Exception {
+>     if (this.viewResolvers != null) {
+>         Iterator var5 = this.viewResolvers.iterator();//配置文件中所有thymeleaf配置个数
+> 
+>         while(var5.hasNext()) {//根据优先级Order进行解析
+>             ViewResolver viewResolver = (ViewResolver)var5.next();
+>             View view = viewResolver.resolveViewName(viewName, locale);
+>             if (view != null) {
+>                 return view;
+>             }
+>         }
+>     }
+> ```
+
+## 2、转发视图InternalResourceView
+
+`如果返回的视图名称以forward:开头，则创建的就是转发视图InternalResourceView。`*`此时的视图名称不会被SpringMVC配置文件中配置的视图解析器解析如thymeleaf，而是thy类将前缀forward:去掉，==剩下部分作为最终路径通过转发的方式实现跳转.其实就是原生ServletAPI中的request.getRequestDispatcher("路径").forward(request,respnose)==`*
+
+```Java
+@RequestMapping("/testForward")
+public String testForward() {
+
+    // 服务器端其中 / 表示ip:port/工程路径
+    //request.getRequestDispatcher("路径").forward(request,response)
+    // return "forward:/success";
+    return "forward:success"; // 加没加斜杠 / 都一样，都表示ip:port/demo3(工程路径)/success
+}
+```
+
+==***转发到一个页面，当然也可以转发到一个请求中（即被@RequestMapping注解匹配的）***==
+
+```java
+@RequestMapping("/testForward2")
+public String testForward2() {
+    //此时访问地址栏不变，但还是会把请求转发 ip:port/demo3/testRequestByServletAPI
+    return "forward:testRequestByServletAPI";
+}
 
 
+//此方法就会捕获到 上面forward 转发请求
+@RequestMapping("/testRequestByServletAPI")
+public String testRequestByServletAPI(HttpServletRequest  request) {...}
+```
 
+> 源码解析 和上面thymeleaf过程一摸一样
+> `1、首先要明确请求转发视图功能底层使用的是缓冲池技术（其目的就是复用，提高运行效率，经常用的请求就放在里面），具体表现为在AbstractCachingViewResolver类下有两个缓冲池viewAccessCache和viewCreationCache`
+> `2、viewAccessCache表示可以直接用的请求视图的缓冲池（如果超过限制就会自动去掉最老的请求视图），viewCreationCache表示已经创建的请求视图的缓冲池`
+>
+> ![](img\缓冲池.jpg)
+>
+> `3、所以如果想要找出创建请求视图的地方，只有第一次访问某个请求时（如/testForward）才会进入请求视图的创建流程【可以重启服务器】`
+>
+> `4、当第一次请求如/testForward被DispatcherServlet接收，就会调用AbstractCachingViewResolver类（其实是ThymeleafViewResolver类，thy类是其子类）下的resolveViewName方法，而resolveViewName调用子类thy类实现的抽象方法this.createView(viewName, locale)来创建请求视图;`
+>
+> <img src="img\前端处理器第一次接受到请求.jpg"  />
+>
+> `5、真正创建请求视图对象是在thy类中，thy类中会根据请求是否带有前缀关键字来调用相应的创建方法`
+>
+> + `如前缀redirect 代码：if (viewName.startsWith("redirect:")) {RedirectView view = new RedirectView(...);}`
+> + `如前缀forward 代码：else if (viewName.startsWith("forward:")) {return new InternalResourceView(forwardUrl);}`
+> + `不含有关键字  代码：else {return this.loadView(viewName, locale);}`
+>
+> ![](img/thy创建请求视图.jpg)
+>
+> 5、总结：不管请求有没有前缀关键字，创建请求视图时thy类总是会被调用的【请求第一次被访问时】
 
+## 3、重定向视图 RedirectView
 
+`如果返回的视图名称以redirect:开头，则创建的就是转发视图RedirectView。`*`此时的视图名称不会被SpringMVC配置文件中配置的视图解析器解析如thymeleaf，而是thy类将前缀redirect:去掉，==剩下部分作为最终路径通过重定向的方式实现跳转.其实就是原生ServletAPI中的request.sendRedirect("路径")==`*
 
-
-
-
-
-
-
-
-
+```java
+@RequestMapping("/testRedirect2")
+public String testRedirect2() {
+    //重定向到另一个请求中【当然也可以直接重定向到某个资源】
+    return "redirect:/testRequestByServletAPI";
+}
+```
