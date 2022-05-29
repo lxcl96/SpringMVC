@@ -4,6 +4,7 @@
     <file type="web" url="file://$PROJECT_DIR$/SpringMVC-demo1" />
     <file type="web" url="file://$PROJECT_DIR$/SpringMVC-demo2" />
     <file type="web" url="file://$PROJECT_DIR$/SpringMVC-demo3" />
+    <file type="web" url="file://$PROJECT_DIR$/SpringMVC-JSP" />
   </component>
   <component name="MavenProjectsManager">
     <option name="originalFiles">
@@ -11,6 +12,7 @@
         <option value="$PROJECT_DIR$/SpringMVC-demo1/pom.xml" />
         <option value="$PROJECT_DIR$/SpringMVC-demo2/pom.xml" />
         <option value="$PROJECT_DIR$/SpringMVC-demo3/pom.xml" />
+        <option value="$PROJECT_DIR$/SpringMVC-demo4/pom.xml" />
       </list>
     </option>
   </component>

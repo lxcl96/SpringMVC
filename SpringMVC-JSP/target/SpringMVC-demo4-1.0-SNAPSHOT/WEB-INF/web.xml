@@ -3,53 +3,49 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
          version="4.0">
-<!--    注册DispatcherServlet前端处理器-->
+
+<!--    配置DispatcherServlet-->
     <servlet>
         <servlet-name>DispatcherServlet</servlet-name>
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-<!--        设置读取配置文件-->
+<!--        使用自定义Spring配置文件-->
         <init-param>
             <param-name>contextConfigLocation</param-name>
-            <param-value>classpath:SpringMVCConfig.xml</param-value>
+            <param-value>classpath:SpringConfig.xml</param-value>
         </init-param>
 
-        <!--指定前端处理器加载时间：大于0表示启动项目时加载，小于等于0表示第一次访问时加载 -->
+<!--        设置前端处理器为 启动项目时启动-->
         <load-on-startup>1</load-on-startup>
     </servlet>
+
     <servlet-mapping>
         <servlet-name>DispatcherServlet</servlet-name>
+<!--        过滤除jsp页面外所有其余请求-->
         <url-pattern>/</url-pattern>
     </servlet-mapping>
 
 
-<!--    设置Spring过滤器解决乱码-->
+<!--    配置Spring过滤器 解决乱码-->
     <filter>
         <filter-name>CharacterEncodingFilter</filter-name>
         <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+
 <!--        指定编码格式-->
         <init-param>
             <param-name>encoding</param-name>
             <param-value>utf-8</param-value>
         </init-param>
-<!--       请求可以不强制，响应编码必须要指定为true-->
+
+<!--        开启响应编码-->
         <init-param>
             <param-name>forceResponseEncoding</param-name>
             <param-value>true</param-value>
         </init-param>
     </filter>
+
     <filter-mapping>
         <filter-name>CharacterEncodingFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 
-
-<!--    配置HiddenHttpMethodFilter过滤器 方便服务器接收put请求-->
-    <filter>
-        <filter-name>HiddenHttpMethodFilter</filter-name>
-        <filter-class>org.springframework.web.filter.HiddenHttpMethodFilter</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>HiddenHttpMethodFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
 </web-app>

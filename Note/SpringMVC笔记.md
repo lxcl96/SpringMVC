@@ -463,6 +463,8 @@ public String success() {
 
 SpringMVC路径中的占位符常用于restful风格中，当请求路径中将某些数据通过路径的方式传输到服务器中（传参），就可以在相应的@ResquestMapping注解的value属性中通过占位符{xxx}表示传输的数据xxx为你任意取的名字，便于获取，再通过@PathVariable注解，将占位符所表示的数据赋值给控制器方法的形参。
 
+==只有占位符的形参才需要@PathVariable()注解，其他正常参数可以按照名字直接获取==
+
 ```java
 //{}就表示为占位符 表示这是前端传来的值而不是地址,随便起个名字叫id 【占位符必有值】
 //多个参数 必须用/分割
@@ -475,6 +477,13 @@ public String testPath(@PathVariable("id") Integer id,@PathVariable("username") 
 }
 
 //注：可以匹配到/testPath/1 但匹配不到/testPath  即占位符不能为空
+```
+
+### ==只有占位符的形参才需要@PathVariable()注解，其他正常参数可以按照名字直接获取==
+
+```java
+ @RequestMapping(value = "/user/{id}",method = RequestMethod.PUT)
+ public ModelAndView updateUser(String username,String password, @PathVariable("id") Integer id) {}
 ```
 
 
@@ -998,3 +1007,157 @@ public String testRedirect2() {
     return "redirect:/testRequestByServletAPI";
 }
 ```
+
+## 4、视图控制器 view-controller
+
+当控制器方法中，仅仅用来实现页面跳转，即只需要设置视图名称时（直接`retuen index`），就可以在SpringMVC的配置文件（如：SpringConfig.xml）中使用`<mvc:view-controller>`标签代替控制器方法。
+
+```xml
+<!-- path对应的就是注解@RequestMapping中的路径     view-name就是return的视图名-->
+<mvc:view-controller path="/" view-name="index"></mvc:view-controller>
+```
+
+上面的配置文件则等同于：
+
+```java
+    @RequestMapping("/")
+    public String toIndex() {
+        return "index";
+    }
+```
+
+### ==如果我们在Spring配置文件中使用视图控制器代替某个控制器方法，那么我们写的所有控制器方法的路径都无法跳转（全部失效,除了自己配的这个）==
+
+***解决方法：***
+
+在SpringMVC的配置文件中加上注解驱动即可：
+
+```xml
+<!-- 
+	需要开启注解驱动的三种情况：
+	1：使用view-controller代替控制器方法实现页面跳转，导致其余所有的控制器方法失效
+	2：restful中通过servlet开发js与css等静态资源，导致所有的控制器方法失效
+	3：将java对象转化为json对象
+-->
+<mvc:annotation-driven /> <!-- 建议每次写都加上-->
+```
+
+## 5、解析JSP请求
+
+因为thymeleaf无法处理jsp请求，所以需要使用servlet自带的解析器InternalResourceViewResolver来解析。
+
+```xml
+<!--    针对jsp开启InternalResourceView 视图解析jservlet原生自带的  和和thymeleaf配置完全一样-->
+<bean id="InternalResourceView" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <!--        配置顺序，优先使用-->
+    <property name="order" value="1" />
+    <!--        配置前缀-->
+    <property name="prefix" value="/WEB-INF/templates/" />
+
+    <!--        配置后缀-->
+    <property name="suffix" value=".jsp" />
+</bean>
+```
+
+# 7、RESTFul
+
+RESTFul：Representational State Transfer即表现层资源状态转移。是一种软件架构的风格。
+
+也就是规定客户端请求资源均访问同一个url路径通过其提交的方式（get，post，put，delete等）来更新资源状态做出相应操作。
+
+## 1、RESTFul的实现
+
+REST风格提倡URL地址使用统一的风格设计，从前到后各个单词使用斜杠/分隔开，不使用问号键值对方式携带请求参数，而是将要发送给服务器的数据作为URL一部分，以保证整体风格的一致性。
+
+GET表示获取资源、POST表示新建资源、PUT表示更新资源、DELETE表示删除资源
+
+## 2、RESTFul案例
+
+```java
+//get post请求和之前的一样 （th:action别忘记th）
+
+//put、delete请求如果直接在form标签中改，默认还是get 
+/**
+	解决方法：
+		1、ajax请求（不推荐，非所有浏览器支持） 
+		2、SpringMVC提供的filter过滤器HiddenHttpMethodFilter (需要在web.xml中配置)
+		
+		**/
+
+```
+
+
+
+```xml
+<!--    配置HiddenHttpMethodFilter过滤器 方便服务器接收put请求-->
+    <filter>
+        <filter-name>HiddenHttpMethodFilter</filter-name>
+        <filter-class>org.springframework.web.filter.HiddenHttpMethodFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>HiddenHttpMethodFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+```
+
+> HiddenHttpMethodFilter过滤器关键源码如下：
+>
+> ```java
+> //判断类型的关键字
+> private String methodParam = "_method";
+> //支持的自定义请求：put DELETE PATCH
+> private static final List<String> ALLOWED_METHODS=  Collections.unmodifiableList(Arrays.asList(HttpMethod.PUT.name(), HttpMethod.DELETE.name(), HttpMethod.PATCH.name()));
+> 
+> protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+>     HttpServletRequest requestToUse = request;
+>     //请求必须为 post
+>     if ("POST".equals(request.getMethod()) && request.getAttribute("javax.servlet.error.exception") == null) {
+>         //request请求参数中必须属性：key为_method ，value为PUT
+>         String paramValue = request.getParameter(this.methodParam);
+>         if (StringUtils.hasLength(paramValue)) {
+>             String method = paramValue.toUpperCase(Locale.ENGLISH);
+>             //put在ALLOWED_METHODS列表中
+>             if (ALLOWED_METHODS.contains(method)) {
+>                 requestToUse = new HiddenHttpMethodFilter.HttpMethodRequestWrapper(request, method);
+>             }
+>         }
+>     }
+> ```
+
+### ***HiddenHttpMethodFilter使用步骤（put和delete请求一样）：***
+
++ 1、web.xml中配置此过滤器，并设置拦截所有请求
++ 2、对于想要设置为put请求的页面，如form标签中 将meth改为post，然后在request请求中加入一组属性值:key为_method ,value为put即可
++ 控制器方法接受，设置method = RequestMethod.PUT
+
+```html
+<!-- put请求-->
+<form th:action="@{/user/112}" method="post"> //必须为post请求
+    <input type="hidden" name="_method" value="put"> //传递的参数必须要有：_method 值为put/delete/patch
+    用户名：<input type="text" name="username" /> <br/>
+    密码：<input type="password" name="password" /> <br/>
+    <input type="submit" value="修改用户" />
+</form>
+   
+```
+
+```html
+<!-- delete请求 一般是超链接 所以需要绑定一个单击事件，实际跳转的还是form的submit-->
+<script type="text/javascript">
+    window.onload = function () {
+        document.getElementById("delete_Post").onclick = function () {
+            document.getElementById("deletePostConfirm").click();
+        }
+    }
+</script>
+
+...
+
+<a href="#" id="delete_Post">删除此用户信息</a>
+<form th:action="@{/user/200}" method="post" style="display: none">
+    <input type="hidden" name="_method" value="delete">
+    <input type="submit" id="deletePostConfirm"/>
+</form>
+</body>
+```
+

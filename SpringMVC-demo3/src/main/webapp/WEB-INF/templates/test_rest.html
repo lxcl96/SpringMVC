@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<script type="text/javascript">
+    window.onload = function () {
+        document.getElementById("delete_Post").onclick = function () {
+            document.getElementById("deletePostConfirm").click();
+        }
+    }
+</script>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <a th:href="@{/user}">查询所有用户信息</a> <br/>
+    <a th:href="@{/user/100}">根据用户id查询用户信息</a> <br/>
+
+    <form th:action="@{/user}" method="post">
+        用户名：<input type="text" name="username" /> <br/>
+        密码：<input type="password" name="password" /> <br/>
+        <input type="submit" value="新增用户" />
+    </form>
+    <br/>
+
+    <form th:action="@{/user/112}" method="post">
+        <input type="hidden" name="_method" value="put">
+        用户名：<input type="text" name="username" /> <br/>
+        密码：<input type="password" name="password" /> <br/>
+        <input type="submit" value="修改用户" />
+    </form>
+    <br/>
+    <a href="#" id="delete_Post">删除此用户信息</a>
+    <form th:action="@{/user/200}" method="post" style="display: none">
+        <input type="hidden" name="_method" value="delete">
+        <input type="submit" id="deletePostConfirm"/>
+    </form>
+</body>
+</html>
