@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee Info</title>
+<!--    <script type="text/javascript" th:src="@{/static/js/vue.js}">-->
+
+    </script>
+    <script type="text/javascript">
+        function delMethod(id) {
+            console.log(id);
+            let delObj = document.getElementById("deleteForm");
+            delObj.action = delObj.action + id;
+            //alert(delObj.action);
+            document.getElementById("deletePost").click();
+        }
+
+        function updateMethod(id) {
+            let updateObj = document.getElementById("updateForm");
+            updateObj.action = updateObj.action + id;
+            //alert(delObj.action);
+            updateObj.submit();
+        }
+    </script>
+    <style type="text/css">
+
+        body {
+            text-align: center;
+        }
+        table {
+            border:1px black solid;
+            border-collapse:collapse;
+            margin: auto;
+        }
+        td {
+            border:1px black solid;
+            border-collapse:collapse;
+            width: 100px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <table>
+        <tr>
+            <td colspan="5">Employee Info</td>
+        </tr>
+        <tr>
+            <td>id</td>
+            <td>lastName</td>
+            <td>email</td>
+            <td>gender</td>
+            <td>options (<a th:href="@{/toNewEmployee}">add</a>)</td>
+        </tr>
+
+        <tr th:each="employee:${employeeList}">
+            <td><input type="text" th:value="${employee.id}" width="45px"></td>
+            <td><input type="text" th:value="${employee.lastName}" width="45px"></td>
+            <td><input type="text" th:value="${employee.email}" width="45px"></td>
+            <td><input type="text" th:value="${employee.gender}" width="45px"></td>
+<!--
+
+<td th:text="${employee.id}"><input type="text" value=""></td>
+            <td th:text="${employee.lastName}"></td>
+            <td th:text="${employee.email}"></td>
+            <td th:text="${employee.gender}"></td>
+-->
+            <td>
+                <a href="#" th:id="${employee.id}" onclick="delMethod(id)">delete</a>
+                <a href="#" th:id="${employee.id}" onclick="updateMethod(id)">update</a>
+            </td>
+        </tr>
+    </table>
+
+
+
+    <!-- 另一种方方法：form中不写action就行了，完整的连接在a标签中写即可  通过js赋值过来 方便-->
+    <form th:action="@{/employee/}" method="post" style="display: none" id="deleteForm">
+        <input type="hidden" name="_method" value="delete"/>
+        <input type="submit" id="deletePost"/> <!-- submit按钮也可以不写直接 form的Dom对象.submit()即可  需要阻止标签a的跳转event.preventDefault()-->
+    </form>
+
+    <form th:action="@{/employee/}" id="updateForm" method="post" style="display: none">
+        <input type="hidden" name="_method" value="put" />
+    </form>
+
+
+</body>
+</html>

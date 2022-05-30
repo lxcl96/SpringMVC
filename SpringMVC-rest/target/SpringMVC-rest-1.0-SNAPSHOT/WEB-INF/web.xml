@@ -3,17 +3,14 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
          version="4.0">
-<!--    注册DispatcherServlet前端处理器-->
+<!--    配置前端处理器DispatcherServlet -->
     <servlet>
         <servlet-name>DispatcherServlet</servlet-name>
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-<!--        设置读取配置文件-->
         <init-param>
             <param-name>contextConfigLocation</param-name>
-            <param-value>classpath:SpringMVCConfig.xml</param-value>
+            <param-value>classpath:SpringConfig.xml</param-value>
         </init-param>
-
-        <!--指定前端处理器加载时间：大于0表示启动项目时加载，小于等于0表示第一次访问时加载 -->
         <load-on-startup>1</load-on-startup>
     </servlet>
     <servlet-mapping>
@@ -21,21 +18,16 @@
         <url-pattern>/</url-pattern>
     </servlet-mapping>
 
-
-<!--    如果都是过虑器则，执行的顺序就是web.xml文件中配置的filter顺序来决定的，
-    而因为HiddenHttpMethodFilter过滤器中会获取请求参数_method所以，设置编码的过虑器CharacterEncodingFilter必须放在所有的过滤器之前
-    这样才能保证每次请求先过来，第一件事就是解决乱码！！！
-    -->
-<!--    设置Spring过滤器解决乱码-->
+<!--    加载字符编码过虑器-->
     <filter>
         <filter-name>CharacterEncodingFilter</filter-name>
         <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
-<!--        指定编码格式-->
+
         <init-param>
             <param-name>encoding</param-name>
             <param-value>utf-8</param-value>
         </init-param>
-<!--       请求可以不强制，响应编码必须要指定为true-->
+
         <init-param>
             <param-name>forceResponseEncoding</param-name>
             <param-value>true</param-value>
@@ -46,8 +38,7 @@
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 
-
-<!--    配置HiddenHttpMethodFilter过滤器 方便服务器接收put请求-->
+<!--    加载请求过虑器-->
     <filter>
         <filter-name>HiddenHttpMethodFilter</filter-name>
         <filter-class>org.springframework.web.filter.HiddenHttpMethodFilter</filter-class>
