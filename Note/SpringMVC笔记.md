@@ -1220,12 +1220,227 @@ HttpMessageConverter,报文信息转换器。``将请求的报文转换为Java�
 ```java
 @RequestMapping(value = "/testRequestBody",method = RequestMethod.POST)
 public String testRequestBody(@RequestBody String requestBody) {
+    //因为这里获取的就是连接的字符串，而地址栏编码为Iso-8859-1 是不支持中文的 所以获得的就是乱码带%的
+    //或者在form表单中加入属性enctype=text\plain
     System.out.println(requestBody);
     return "success";
 }
 ```
 
-## 2、@ResponseBody：返回体
+> 一般用于ajax，传递json数据
+
+## 2、RequestEntity：请求报文实体（将请求报文转化为Java对象）
+
+RequestEntity类封装请求报文的一种类型，需要在控制器方法的形参中设置该类型的形参，当前请求的请求报文就会赋值给该形参，可以通过getHeaders()获取请求头信息，通过getBody()获取请求体信息。
+
+```java
+@RequestMapping(value = "/testRequestEntity",method = RequestMethod.POST)
+public String testRequestEntity(RequestEntity<String> requestEntity) {
+    System.out.println(requestEntity);
+    System.out.println(requestEntity.getMethod());
+    System.out.println(requestEntity.getType());
+    System.out.println(requestEntity.getUrl());
+    System.out.println(requestEntity.getBody());
+    System.out.println(requestEntity.getHeaders());
+    return "success";
+}
+```
+
+## 3、@ResponseBody
+
+==@ResponseBody用于标识一个控制器方法，可以将该方法的返回值直接作为响应报文的响应体响应到浏览器。==
+
+和public String testResponseBody(HttpservletResponse response)  {}一样，原生的写法 
+
+```java
+@RequestMapping("/testResponseBody")
+@ResponseBody
+public String testResponseBody() {
+    //直接返回h1标题 
+    return "<h1> testResponseBody 成功！</h1>";
+}
+```
+
+
+
+## 4、SpringMVC：传递JSON数据
+
+```java
+//服务器只能接收文本，然而返回的是一个Java对象就会报错
+//500 内部服务器错误  HttpMessageNotWritableException
+@RequestMapping("/testResponseUser")
+@ResponseBody
+public User testResponseUser() {
+    return new User(1,"张三",22,"男");
+}
+```
+
+***解决方法：将Java对象转化为JSON数据，传递到浏览器，如果需要可以使用ajax对其进行解析***
+
+加入依赖：
+
+```xml
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.12.1</version>
+</dependency>
+```
+
+重启服务即可（`就是上面直接返回User，会自动转化为json数据`）
+
+```java
+/*
+	Java对象 转化为 json对象 （kv）
+	Map集合  转化为 json对象 （kv）
+	List集合 转化为 jason数组 （v）
+*/
+
+{} 最外面的是{}就是json对象 
+//示例：{name: "北京", area: "16000", haidian: {name: "海淀区"}}
+[] 最外面的是[]就是json数组
+//示例：[["北京市"], ["上海市"], ["合肥市", "芜湖市", "蚌埠市"]]
+
+json字符串就是json对象外面加了一个''即{}'所以json字符串可以和json对象相互转化
+```
+
+实现步骤：
+
++ maven中导入jackson依赖
+
+```xml
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.12.1</version>
+</dependency>
+```
+
++ 在springMVC配置文件中开启注解驱动 
+
+  ```xml
+  <!-- 1、解决view_controller路径跳转问题
+  	 2、解决静态资源（js，css,png等）无法加载的问题  【如果不行就是maven重新打包】
+  	 3、配合@ResponseBody将Java对象直接转成json对象-->
+  <mvc:annotation-driven /> 
+  ```
+
++ 在处理器方法上使用@ResponseBody注解
+
++ 将Java对象直接作为控制器方法的返回值返沪，就会自动返回json格式的字符串（非json对象）
+
+```java
+@RequestMapping("/testResponseUser")
+@ResponseBody
+public User testResponseUser() {
+    return new User(1,"张三",22,"男");
+}
+```
+
+## 5、SpringMVC：处理ajax
+
+
+
+## 6、@RestController = @Controller + @ResponseBody
+
+@RestController注解是springMVC提供的一个复合注解，标识在类上，相当于为当前类添加了@Controller注解，并为其中每个方法都加上了@ResponseBody注解
+
+
+
+## 7、ResponseEntity
+
+ResponseEntity用于控制器方法的返回值 类型，该控制器方法的返回值就是响应到浏览器的响应报文。（即将Java对象转化为响应报文）
+
+`可用于文件下载，因为要修改响应头，标识该文件用于下载，而非展示。`
+
+
+
+# 九、文件上传和下载
+
+## 1、文件下载
+
+使用ResponseEntity实现文件下载：
+
+```java
+@RequestMapping("/testFileDown")
+public ResponseEntity<byte[]> testFileDown(HttpSession session) throws IOException {
+    //获取servletContext对象
+    ServletContext servletContext = session.getServletContext();
+    //要下载的获取文件在服务器的真实路径
+    String realPath = servletContext.getRealPath("/static/img/summer.jpg");
+    System.out.println(realPath);
+    //创建输入流
+    FileInputStream is = new FileInputStream(realPath);
+    byte[] bytes = new byte[is.available()];
+    is.read(bytes);
+
+    //创建HttpHeader对象，并设置响应头信息
+    MultiValueMap<String,String> httpHeaders = new HttpHeaders();
+    //设计下载标记
+    httpHeaders.add("Content-Disposition","attachment;filename=summer.jpg");
+
+    //设置响应状态码
+    HttpStatus statusCode = HttpStatus.OK;
+    //创建报文对象 ResponseEntity
+    is.close();
+    return new ResponseEntity<byte[]>(bytes,httpHeaders,statusCode);
+}
+```
+
+
+
+## 2、文件上传
+
++ 添加相应的依赖
+
+  ```xml
+  <dependency>
+      <groupId>commons-fileupload</groupId>
+      <artifactId>commons-fileupload</artifactId>
+      <version>1.3.1</version>
+  </dependency>
+  ```
+
++ spring配置文件中 配置文件上传解析器，将上传的文件封装为MultipartFIle对象(为了将参数的值转化为MultipartFile类型)
+
+  ```xml
+  <!-- 必须加上id，是通过id获取 且值必须为：multipartResolver-->
+  <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver" >
+  ```
+
++ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

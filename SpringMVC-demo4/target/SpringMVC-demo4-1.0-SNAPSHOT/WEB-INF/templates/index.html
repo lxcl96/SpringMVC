@@ -3,13 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <title>首页</title>
+
 </head>
 <body>
     <h1>首页</h1> <br/>
-    <form th:action="@{/testRequestBody}" method="post">
+    <form th:action="@{/testRequestBody}" method="post" enctype="text/plain">
         用户名：<input type="text" name="username" /> <br/>
         密码：<input type="password" name="password"> <br/>
         <input type="submit"/>
     </form>
+    <br/>
+    <div id="app">
+        <a @click="testAxios" th:href="@{/testAxios}">SpringMVC处理ajax</a>
+    </div>
+
+
+    <script type="text/javascript" th:src="@{/static/js/vue.js}"></script>
+    <script type="text/javascript" th:src="@{/static/js/axios.min.js}"></script>
+    <script type="text/javascript">
+        new Vue({
+            el:"#app",
+            methods:{
+                testAxios:function (event) {
+                    axios({
+                        method:"post",
+                        url:event.target.href,
+                        params:{
+                            username:"admin",
+                            password:"12345"
+                        }
+                    }).then(function (response) {
+                        alert(response.data);
+                    });
+                    event.preventDefault();
+                }
+            }
+        });
+    </script>
 </body>
 </html>

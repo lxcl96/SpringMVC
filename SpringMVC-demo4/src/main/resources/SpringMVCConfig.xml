@@ -9,10 +9,16 @@
 
     <!-- path对应的就是注解@RequestMapping中的路径     view-name就是return的视图名-->
     <mvc:view-controller path="/" view-name="index"></mvc:view-controller>
+    <mvc:view-controller path="/file" view-name="file"></mvc:view-controller>
 
     <!-- 开启mvc的注解驱动-->
     <mvc:annotation-driven/>
+<!--    配置文件上传解析器，将上传的文件封装为MultipartFIle对象-->
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver" >
 
+    </bean>
+    <!-- 开启默认servlet。放行静态资源   -->
+    <mvc:default-servlet-handler />
 <!--    指定前段渲染模版thymeleaf-->
     <bean id="viewResolver" class="org.thymeleaf.spring5.view.ThymeleafViewResolver">
         <property name="order" value="1"/>
