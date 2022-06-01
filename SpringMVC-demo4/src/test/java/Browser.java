@@ -1,6 +1,8 @@
 import eu.bitwalker.useragentutils.UserAgent;
 import org.junit.Test;
 
+import java.util.UUID;
+
 /**
  * @FileName:Browser.class
  * @Author:ly
@@ -18,5 +20,12 @@ public class Browser {
         System.out.println(userAgent.getOperatingSystem());
         System.out.println(userAgent.getBrowser());
         System.out.println(userAgent.getBrowserVersion());
+    }
+
+
+    @Test
+    public void stringTest() {
+        String s = "ni.hao.jsp";
+        System.out.println(s.substring(s.lastIndexOf(".") + 1));
     }
 }

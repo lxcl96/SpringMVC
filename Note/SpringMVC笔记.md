@@ -1408,23 +1408,206 @@ public ResponseEntity<byte[]> testFileDown(HttpSession session) throws IOExcepti
   <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver" >
   ```
 
-+ 
++ 使用MultipartFile对象接收传来的文件参数值
+
+```java
+   @RequestMapping("/testFileUp")
+    //photo 对应前端照片的name  即获取参数 ,session是为了确定服务器真实存放路径
+    public String testFileUp(MultipartFile photo,HttpSession session) throws IOException {
+        ServletContext servletContext = session.getServletContext();
+        //获取文件在服务器上要保存的目录  的绝对路径
+        String realPath = servletContext.getRealPath("photo");
+        //获取文件名
+        String originalFilename = photo.getOriginalFilename();
+        //包含 .
+        String fileSuffix = originalFilename.substring(originalFilename.lastIndexOf('.'));
+        File directory = new File(realPath + File.separator);
+        if (!directory.exists()) {
+            boolean mkdirs = directory.mkdirs();
+            System.out.println(mkdirs?directory+ "创建成功":directory + "创建失败");
+        }
+        //UUID解决文件重名的问题
+        photo.transferTo(new File(realPath + File.separator + UUID.randomUUID().toString() +fileSuffix));
+        //表单元素的name属性值 即参数key
+        System.out.println(photo.getName());
+        //完整的文件名
+        System.out.println(photo.getOriginalFilename());
+        return "success";
+    }
+```
 
 
 
+# 十、拦截器
 
+## 1、拦截器的配置
 
+SpringMVC的拦截器用于拦截控制器方法的执行（`注意是控制器方法`）
 
+> Listener监听器 ==》 Filter过滤器 ==》DispatcherServlet前端处理器 ==》控制器方法
 
+SpringMVC中的拦截器要实现HandlerInterceptor接口或者继承HandlerInterceptorAdapter类
 
+SpringMVC的拦截器必须在SpringMVC的配置文件中进行配置。
 
+Spring拦截器只对DispatcherServlet所处理的请求进行拦截
 
+## 2、拦截器的种类
 
+均是在DispatcherServlet前端处理器中执行：
 
++ preHandle() 控制器方法执行器前拦截  （顺序：1）  ==返回false表示拦截，返回true表示放行==
 
+  ```java
+  //DispatcherServlet中的执行代码
+  if (!mappedHandler.applyPreHandle(processedRequest, response)) {
+      return;
+  }
+  ```
 
++ postHandle() 控制器方法执行后拦截  （顺序：2）
 
+  ```java
+  //DispatcherServlet中的执行代码
+  mappedHandler.applyPostHandle(processedRequest, response, mv);
+  ```
 
++ afterComplation() 在渲染完视图后执行  （顺序：3）
+
+  ```java
+  //DispatcherServlet中的执行代码
+  if (mappedHandler != null) {
+  	mappedHandler.triggerAfterCompletion(request, response, (Exception)null);
+  }
+  ```
+
+## 3、使用拦截器
+
++ 创建一个类，实现接口HandlerInterceptor(或继承类InterceptorAdapter)
+
++ 重新接口的三个default类型方法 ==拦截或放行由preHandle的返回值决定。返回false表示拦截，返回true表示放行==
+
+  ```java
+  //控制器方法执行前执行
+  @Override
+  public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+      System.out.println("1.这里是控制器方法前置拦截器 preHandle！！");
+      //返回false表示拦截，返回true表示放行
+      return HandlerInterceptor.super.preHandle(request, response, handler);
+  }
+  
+  //控制器方法执行后执行
+  @Override
+  public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+      System.out.println("2.这里是控制器方法后置拦截器 postHandle！！");
+      HandlerInterceptor.super.postHandle(request, response, handler, modelAndView);
+  }
+  
+  //控制器方法后，渲染视图后执行（ModelAndView）
+  @Override
+  public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+      System.out.println("3.这里是渲染视图后的拦截器 afterCompletion！！");
+      HandlerInterceptor.super.afterCompletion(request, response, handler, ex);
+  }
+  ```
+
++ 在springMVC配置文件中配置拦截器
+
+  ```xml
+  <!--    配置拦截器-->
+      <!--  方法1：此时配置的拦截器，所有的请求都会被其接收处理（拦截/放行） 包括不存在的请求地址  -->
+      <mvc:interceptors>
+          <bean id="myInterceptor" class="com.ly.mvc.interceptor.MyInterceptor" ></bean>
+      </mvc:interceptors>
+  
+  
+      <!--  方法2：此时配置的拦截器，所有的请求都会被其接收处理（拦截/放行） 包括不存在的请求地址 【bean可以用xml 也可以用注解@component】 -->
+      <mvc:interceptors>
+          <ref bean="myInterceptor"></bean>  <!--该类上有注解@component-->
+      </mvc:interceptors>
+  
+  
+  
+      <!--  方法3：此时配置的拦截器，对指定路径进行拦截  -->
+      <mvc:interceptors>
+          <mvc:interceptor>
+              <!--    可配置多个拦截路径 多个放行路径   -->
+              <mvc:mapping path="/*"/>  <!-- 仅拦截一层目录所有   多层目录/hah/test/../就匹配不到了   /**可以拦截所有请求-->
+              <mvc:mapping path="/hah" /> <!-- 拦截/hah-->
+              <mvc:exclude-mapping path="/"/>  <!-- 不拦截 /-->
+              <mvc:exclude-mapping path="/testInterceptor"/>  <!-- 不拦截 /testInterceptor-->
+  <!--            <bean class="com.ly.mvc.interceptor.MyInterceptor"></bean>-->
+              <ref bean="myInterceptor"/> <!--该类上有注解@component-->
+          </mvc:interceptor>
+      </mvc:interceptors>
+  ```
+
+## 4、多个拦截器的执行顺序
+
+DispatcherServlet中拦截器的底层原理
+
+> 1.为什么我们自己的afterCompletion方法没执行呢？这是因为applyPreHandle的执行顺序就是遍历执行所有的拦截器的前置方法preHandle，直到有一个返回的是false即拦截
+>
+> ![image-20220601153524799](img\拦截器.png)
+>
+> 2.这个时候SpringMVC就会执行，当前这个interceptor前面所有的拦截器的afterCompletion 不包括当前这个拦截器，所以不会执行我们自己的afterCompletion方法
+>
+> ![image-20220601154118615](D:\java_work\SpringMVC\Note\img\拦截器2.png)
+>
+> 3.这是因为执行afterCompletion方法的对象是根据j =this.interceptorIndex开始，j >= 0结束。而interceptorIndex在前面取出每个拦截器时取值为i++ （不是++i）
+>
+> 5.总结：当遇到有一个是拦截（false）的拦截器时，就执行这个拦截器列表中序号在其前所有的拦截器的afterCompletion方法（不包括他自身），==而这个列表中拦截器的顺序就是你在Spring配置文件中配置bean的顺序==。
+>
+> ```xml
+> <!--  方法1：此时配置的拦截器，所有的请求都会被其接收处理（拦截/放行） 包括不存在的请求地址  -->
+> <mvc:interceptors>
+>     <!-- return true-->
+>     <bean id="myInterceptor1" class="com.ly.mvc.interceptor.MyInterceptor1" ></bean>
+>     <!-- return false-->
+>     <bean id="myInterceptor" class="com.ly.mvc.interceptor.MyInterceptor" ></bean>
+>     <!-- return true-->
+>     <bean id="myInterceptor2" class="com.ly.mvc.interceptor.MyInterceptor2" ></bean>
+> </mvc:interceptors>
+> 
+> 
+> /*
+> 	拦截执行结果：
+> 	MyInterceptor1.preHandler();
+> 	MyInterceptor.preHandler();
+> 	MyInterceptor1.afterCompletion();
+> 
+> */
+> 
+> 
+> <mvc:interceptors>
+>     <!-- return true-->
+>     <bean id="myInterceptor1" class="com.ly.mvc.interceptor.MyInterceptor1" ></bean>
+>     <!-- return true-->
+>     <bean id="myInterceptor" class="com.ly.mvc.interceptor.MyInterceptor" ></bean>
+>     <!-- return true-->
+>     <bean id="myInterceptor2" class="com.ly.mvc.interceptor.MyInterceptor2" ></bean>
+> </mvc:interceptors>
+> 
+> 
+> /*
+> 	放行执行结果： （源码 DispatcherServlet.java中 doDispatch() 方法
+> 	//对应源码的顺序  mappedHandler.applyPreHandle(processedRequest, response)
+> 	MyInterceptor1.preHandler();
+> 	MyInterceptor.preHandler();
+> 	MyInterceptor2.preHandler();
+> 	//对应源码的顺序   mappedHandler.applyPostHandle(processedRequest, response, mv);
+> 	MyInterceptor2.postHandler();
+> 	MyInterceptor.postHandler();
+> 	MyInterceptor1.postHandler();
+> 	// 对源码的顺序 processDispatchResult()中执行
+> 	MyInterceptor2.afterCompletion();
+> 	MyInterceptor.afterCompletion();
+> 	MyInterceptor1.afterCompletion();
+> 
+> */
+> ```
+
+![image-20220601162113094](D:\java_work\SpringMVC\Note\img\拦截器3.png)
 
 
 

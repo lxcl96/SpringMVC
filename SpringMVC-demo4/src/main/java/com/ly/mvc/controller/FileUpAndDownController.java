@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * @FileName:FileUpAndDownController.class
@@ -25,17 +26,22 @@ import java.io.IOException;
 public class FileUpAndDownController {
 
     @RequestMapping("/testFileUp")
-    //photot 对应前端照片的name  即获取参数 ,session是为了确定服务器真实存放路径
+    //photo 对应前端照片的name  即获取参数 ,session是为了确定服务器真实存放路径
     public String testFileUp(MultipartFile photo,HttpSession session) throws IOException {
         ServletContext servletContext = session.getServletContext();
+        //获取文件在服务器上要保存的目录  的绝对路径
         String realPath = servletContext.getRealPath("photo");
-
+        //获取文件名
+        String originalFilename = photo.getOriginalFilename();
+        //包含 .
+        String fileSuffix = originalFilename.substring(originalFilename.lastIndexOf('.'));
         File directory = new File(realPath + File.separator);
         if (!directory.exists()) {
             boolean mkdirs = directory.mkdirs();
             System.out.println(mkdirs?directory+ "创建成功":directory + "创建失败");
         }
-        photo.transferTo(new File(realPath + File.separator + photo.getOriginalFilename()));
+        //UUID解决文件重名的问题
+        photo.transferTo(new File(realPath + File.separator + UUID.randomUUID().toString() +fileSuffix));
         //表单元素的name属性值 即参数key
         System.out.println(photo.getName());
         //完整的文件名
