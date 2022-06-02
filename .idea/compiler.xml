@@ -12,10 +12,12 @@
         <module name="SpringMVC-demo1" />
         <module name="SpringMVC-demo4" />
         <module name="SpringMVC-demo3" />
+        <module name="SpringMVC-annotation" />
         <module name="SpringMVC-demo5" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="SpringMVC-annotation" target="1.8" />
       <module name="SpringMVC-demo1" target="1.8" />
       <module name="SpringMVC-demo2" target="1.8" />
       <module name="SpringMVC-demo3" target="1.8" />

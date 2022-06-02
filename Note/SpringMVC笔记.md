@@ -87,6 +87,35 @@ Spring版本：5.3.1
         <artifactId>thymeleaf-spring5</artifactId>
         <version>3.0.12.RELEASE</version>
     </dependency>
+</dependencies><dependencies>
+    <!-- SpringMVC -->
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-webmvc</artifactId>
+        <version>5.3.1</version>
+    </dependency>
+
+    <!-- 日志 -->
+    <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>1.2.3</version>
+    </dependency>
+
+    <!-- ServletAPI -->
+    <dependency>
+        <groupId>javax.servlet</groupId>
+        <artifactId>javax.servlet-api</artifactId>
+        <version>3.1.0</version>
+        <scope>provided</scope>
+    </dependency>
+
+    <!-- Spring5和Thymeleaf整合包 -->
+    <dependency>
+        <groupId>org.thymeleaf</groupId>
+        <artifactId>thymeleaf-spring5</artifactId>
+        <version>3.0.12.RELEASE</version>
+    </dependency>
 </dependencies>
 ```
 
@@ -1611,15 +1640,56 @@ DispatcherServlet中拦截器的底层原理
 
 
 
+# 十一、异常处理器
+
+SpringMVC提供了一个处理 *所有控制器方法* 执行过程中所出现的异常 的接口：HandlerExceptionResolver
+
+HandlerExceptionResolver接口的实现类有：
+
++ DefaultHandlerExceptionResolver（`SpringMVC默认使用的异常处理器，默认就使用了`）
++ SimpleMappingExceptionResolver（`让我们自定义异常的处理,即如果控制器方法运行出现异常，跳转到对应异常的视图页面`）
+
+## 1、基于xml配置文件的异常处理实现
+
+```xml
+<!--配置自定义异常处理-->
+<bean id="simpleMappingExceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver" >
+    <property name="exceptionMappings" >
+        <!--   设置properties属性 -->
+        <props>
+            <!-- key表示异常全类名   双标签中写入 要跳转的视图名(thymeleaf中配置了视图的前缀 和后缀 所以这里直接写视图名即可 【如果设置了前缀forward或redirect就是额外两个解析器了】)  -->
+            <prop key="java.lang.ArithmeticException">error</prop>
+            <prop key="java.lang.NullPointerException">error</prop>
+        </props>
+    </property>
+
+    <!-- 设置出现对应异常时 需要渲染的数据（Model） 默认存在request域中 value就是键key（不设置的话默认就是value=exception）  值value 就是当前的异常信息
+        仅对上面配置的要跳转异常(ArithmeticException,NullPointerException)都有效 -->
+    <property name="exceptionAttribute" value="ex">
+
+    </property>
+</bean>
+```
+
+
+
+## 2、基于注解的异常处理实现
+
+使用注解`@ControllerAdvice`将当前控制器类当作异常处理组件，使用注解`@ExceptionHandler`标识当前控制器方法要处理的异常类型 【`均是根据异常分类来跳转的`】
 
 
 
 
 
+# 十二、通过注解来实现SpringMVC
 
+使用配置类和注解代替web.xml和SpringMVC配置文件的功能
 
+## 1、创建初始化类，代替web.xml
 
+在Servlet3.0环境中，容器会在 *类路径中* 查找查找实现了`javax.servlet.ServletContainerInitializer`接口的类，如果找到的话就用它来配置Servlet容器。
 
+Spring提供了这个接口的实现，名为：`SpringServletContainerInitializer`，这个类反过来又会查找实现`WebApplicationInitializer`的类，并将配置的任务交给他们来完成。Spring3.2引入了一个便利的`WebApplicationInitializer`基础实现，名为	`AbstractAnnotationConfigDispatcherServletInitializer`，当我们的类扩展了`AbstractAnnotationConfigDispatcherServletInitializer`这个接口并将其部署到servlet3.0的容器中时，容器会自动发现它，并用它来配置Servlet上下文
 
 
 

@@ -68,4 +68,23 @@
 <!--    </mvc:interceptors>-->
 
 
+    <!--配置自定义异常处理-->
+    <bean id="simpleMappingExceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver" >
+        <property name="exceptionMappings" >
+            <!--   设置properties属性 -->
+            <props>
+                <!-- key表示异常全类名   双标签中写入 要跳转的视图名(thymeleaf中配置了视图的前缀 和后缀 所以这里直接写视图名即可 【如果设置了前缀forward或redirect就是额外两个解析器了】)  -->
+                <prop key="java.lang.ArithmeticException">error</prop>
+                <prop key="java.lang.NullPointerException">error</prop>
+            </props>
+        </property>
+
+        <!-- 设置出现对应异常时 需要渲染的数据（Model） 默认存在request域中 value就是键key（不设置的话默认就是value=exception）  值value 就是当前的异常信息
+            对上面配置的要跳转异常都有效 -->
+        <property name="exceptionAttribute" value="ex">
+
+        </property>
+
+    </bean>
+
 </beans>
