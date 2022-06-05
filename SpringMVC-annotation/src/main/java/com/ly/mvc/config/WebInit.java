@@ -1,11 +1,15 @@
 package com.ly.mvc.config;
 
+import com.ly.mvc.filter.MyFilter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.filter.HiddenHttpMethodFilter;
 import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.servlet.FrameworkServlet;
 import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
 
-import javax.servlet.Filter;
+import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
 
 /**
@@ -47,21 +51,27 @@ public class WebInit extends AbstractAnnotationConfigDispatcherServletInitialize
         return new String[]{"/"}; //接收所有请求 除jsp外
     }
 
+
+
     /**
-     * 设置servlet的过虑器
-     * @return
+     * 设置servlet的过虑器 [默认对所有路径有效]
+     * @return 返回所有过滤器的数组
      */
     @Override
     protected Filter[] getServletFilters() {
         //两个过虑器 1.HiddenHttpMethodFilter  2.CharacterEncodingFilter
         //设置请求和响应编码
         CharacterEncodingFilter encodingFilter = new CharacterEncodingFilter("utf-8",true);
+
         System.out.println("*************接收到servlet两个过虑器************");
         //接收put ，delete，patch请求
         HiddenHttpMethodFilter httpMethodFilter = new HiddenHttpMethodFilter();
-        return new Filter[]{encodingFilter,httpMethodFilter};
+
+
+        return new Filter[]{encodingFilter,httpMethodFilter,new MyFilter()};
 
         //???疑问为什么没配置过虑器的路径url-pattern
 
     }
+
 }

@@ -1653,7 +1653,7 @@ HandlerExceptionResolver接口的实现类有：
 
 ```xml
 <!--配置自定义异常处理-->
-<bean id="simpleMappingExceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver" >
+<bean id="simpleMappingE ”“xceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver" >
     <property name="exceptionMappings" >
         <!--   设置properties属性 -->
         <props>
@@ -1691,19 +1691,447 @@ HandlerExceptionResolver接口的实现类有：
 
 Spring提供了这个接口的实现，名为：`SpringServletContainerInitializer`，这个类反过来又会查找实现`WebApplicationInitializer`的类，并将配置的任务交给他们来完成。Spring3.2引入了一个便利的`WebApplicationInitializer`基础实现，名为	`AbstractAnnotationConfigDispatcherServletInitializer`，当我们的类扩展了`AbstractAnnotationConfigDispatcherServletInitializer`这个接口并将其部署到servlet3.0的容器中时，容器会自动发现它，并用它来配置Servlet上下文
 
+```java
+package com.ly.mvc.config;
+
+import com.ly.mvc.filter.MyFilter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.filter.CharacterEncodingFilter;
+import org.springframework.web.filter.HiddenHttpMethodFilter;
+import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.servlet.FrameworkServlet;
+import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
+
+import javax.servlet.*;
+import javax.servlet.annotation.WebFilter;
+
+/**
+ * @FileName:WebInit.class
+ * @Author:ly
+ * @Date:2022/6/2
+ * @Description: 配置类 代替web.xml
+ */
+public class WebInit extends AbstractAnnotationConfigDispatcherServletInitializer {
+
+    /**
+     *指定Spring配置类
+     * @return 返回spring配置类的class
+     */
+    @Override
+    protected Class<?>[] getRootConfigClasses() {
+
+        //返回spring配置类的class  没有配置类返回Class[0] 长度为0的数组
+        return new Class[]{SpringConfig.class};
+    }
+
+    /**
+     * 指定SpringMVC的配置类   代替SpringMVC的配置文件
+     * @return 返回SpringMVC配置类的class
+     */
+    @Override
+    protected Class<?>[] getServletConfigClasses() {
+        //返回springMVC配置类的class  没有配置类返回Class[0] 长度为0的数组
+        return new Class[]{WebConfig.class};
+    }
+
+    /**
+     * 指定DispatcherServlet的映射路径 (和web.xml一样处理所有请求)
+     * @return 返回映射路径
+     */
+    @Override
+    protected String[] getServletMappings() {
+        //return new String[0] 一个servlet可以有多个url-pattern 所以是数组
+        return new String[]{"/"}; //接收所有请求 除jsp外
+    }
 
 
 
+    /**
+     * 设置servlet的过虑器 [默认对所有路径有效]
+     * @return 返回所有过滤器的数组
+     */
+    @Override
+    protected Filter[] getServletFilters() {
+        //两个过虑器 1.HiddenHttpMethodFilter  2.CharacterEncodingFilter
+        //设置请求和响应编码
+        CharacterEncodingFilter encodingFilter = new CharacterEncodingFilter("utf-8",true);
+
+        System.out.println("*************接收到servlet两个过虑器************");
+        //接收put ，delete，patch请求
+        HiddenHttpMethodFilter httpMethodFilter = new HiddenHttpMethodFilter();
+
+
+        return new Filter[]{encodingFilter,httpMethodFilter,new MyFilter()};
+
+        //???疑问为什么没配置过虑器的路径url-pattern  【默认对所有路径有效】
+
+    }
+
+}
+```
 
 
 
+## 2、创建Spring配置类
+
+```java
+package com.ly.mvc.config;
+
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * @FileName:SpringConfig.class
+ * @Author:ly
+ * @Date:2022/6/2
+ * @Description: Spring的配置类
+ */
+
+@Configuration
+public class SpringConfig {
+    //Spring配置文件 那些自己写的control service repository等
+    //没合并到SpringMVC中就不写了
+}
+```
 
 
 
+## 3、创建SpringMVC配置类
+
+```java
+package com.ly.mvc.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.context.ContextLoader;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.multipart.MultipartResolver;
+import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+import org.springframework.web.servlet.HandlerExceptionResolver;
+import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.ViewResolver;
+import org.springframework.web.servlet.config.annotation.*;
+import org.springframework.web.servlet.handler.SimpleMappingExceptionResolver;
+import org.springframework.web.servlet.mvc.ParameterizableViewController;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
+import org.springframework.web.servlet.resource.DefaultServletHttpRequestHandler;
+import org.thymeleaf.spring5.SpringTemplateEngine;
+import org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver;
+import org.thymeleaf.spring5.view.ThymeleafViewResolver;
+import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.templateresolver.ITemplateResolver;
+import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.List;
+import java.util.Properties;
+
+/**
+ * @FileName:WebConfig.class
+ * @Author:ly
+ * @Date:2022/6/2
+ * @Description: SpringMVC的配置类 代替springMVC的配置文件
+ */
+/*
+     1.开启注解扫描   2.配置Thymeleaf模板解析   3.开启视图控制器view-controller  4.开启注解驱动器annotation-driver
+     5.开启默认servlet处理器 default-servlet-handler   6.开启文件上传解析器   7.开启拦截器    8.异常处理
+ */
+@Configuration
+//1.开启注解扫描
+@ComponentScan(basePackages = {"com.ly.mvc"})
+//4.开启注解驱动器annotation-driver
+@EnableWebMvc
+public class WebConfig implements WebMvcConfigurer {
+    //代替SpringMVC的配置文件
+
+    //1.开启注解扫描
+
+
+    //2.配置Thymeleaf模板解析  【***自己写的SpringIOC容器不知道啊，所以不饿能用***】
+    /*
+
+        ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
+        viewResolver.setOrder(1);
+        viewResolver.setCharacterEncoding("utf-8");
+        //配置模板解析引擎
+        SpringTemplateEngine engine = new SpringTemplateEngine();
+        //配置模板引擎解析器
+        SpringResourceTemplateResolver templateResolver = new SpringResourceTemplateResolver();
+        templateResolver.setPrefix("/WEB-INF/templates/");
+        templateResolver.setSuffix(".html");
+        templateResolver.setTemplateMode("HTML5");
+        templateResolver.setCharacterEncoding("utf-8");
+
+        engine.setTemplateResolver(templateResolver);
+        viewResolver.setTemplateEngine(engine);
+
+     */
+
+
+    //3.开启视图控制器view-controller
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/toUpload").setViewName("file-upload");
+    }
+
+
+    //4.开启注解驱动器 annotation-driver
+
+
+    //5.开启默认servlet处理器 default-servlet-handler
+    //需要实现一个接口  WebMvcConfigurer
+    @Override
+    public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+        //表示启动default-servlet  访问静态资源
+        configurer.enable();
+    }
+
+
+    //6.开启文件上传解析器  函数名称必须为multipartResolver  就和xml中id必有且为multipartResolver 一样
+    @Bean
+    public CommonsMultipartResolver multipartResolver() {
+        return new CommonsMultipartResolver();
+    }
+
+    //7.开启拦截器
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        //通过匿名内部类传入 拦截器 【或者直接写一个拦截器】
+        registry.addInterceptor(new HandlerInterceptor() {
+            @Override
+            public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+                System.out.println("基于 注解的拦截器！！！");
+                return true;
+            }
+
+            @Override
+            public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+
+            }
+
+            @Override
+            public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+
+            }
+        }).addPathPatterns("/**"); //拦截所有
+    }
+
+
+    //8.异常处理  既可以用接口的的实现方法configureHandlerExceptionResolvers   也可以直接通过@Bean来创建
+    @Override
+    public void configureHandlerExceptionResolvers(List<HandlerExceptionResolver> resolvers) {
+        Properties properties = new Properties();
+        properties.setProperty("java.lang.ClassCastException","error");
+
+        SimpleMappingExceptionResolver exceptionResolver = new SimpleMappingExceptionResolver();
+        //exceptionResolver.addStatusCode("error",200);
+
+        //键key 为异常的全类名，值value为出现这个异常要跳转的页面
+        exceptionResolver.setExceptionMappings(properties);
+        //设置前段获取异常的关键字key  默认为exception
+        exceptionResolver.setExceptionAttribute("ex");
+
+        //默认的异常跳转页面 即 发生没有指定的异常时 跳转到error1
+        exceptionResolver.setDefaultStatusCode(200);
+        exceptionResolver.setDefaultErrorView("error1");
+        exceptionResolver.setExcludedExceptions(NullPointerException.class,ArithmeticException.class);
+
+        resolvers.add(exceptionResolver);
+    }
+
+    //2.配置Thymeleaf模板解析
+    //配置生成模板解析器
+    @Bean
+    public static ITemplateResolver templateResolver() {
+        //对应spring5的ApplicationContext===》针对java工程  ，下面是针对web工程的
+        WebApplicationContext webApplicationContext = ContextLoader.getCurrentWebApplicationContext();
+        // ServletContextTemplateResolver需要一个ServletContext作为构造参数，可通过WebApplicationContext 的方法获得
+        ServletContextTemplateResolver templateResolver = new ServletContextTemplateResolver(
+                webApplicationContext.getServletContext());
+        templateResolver.setPrefix("/WEB-INF/templates/");
+        templateResolver.setSuffix(".html");
+        templateResolver.setCharacterEncoding("UTF-8");
+        templateResolver.setTemplateMode(TemplateMode.HTML);
+        return templateResolver;
+    }
+
+    //生成模板引擎并为模板引擎注入模板解析器  参数根据类型由IOC容器自动装配@Autowire
+    @Bean
+    public static SpringTemplateEngine templateEngine(ITemplateResolver templateResolver) {
+        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
+        templateEngine.setTemplateResolver(templateResolver);
+        return templateEngine;
+    }
+
+    //生成视图解析器并未解析器注入模板引擎  参数根据类型由IOC容器自动装配@Autowire
+    @Bean
+    public static ViewResolver viewResolver(SpringTemplateEngine templateEngine) {
+        ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
+        viewResolver.setCharacterEncoding("UTF-8");
+        viewResolver.setOrder(1);
+        viewResolver.setTemplateEngine(templateEngine);
+        return viewResolver;
+    }
+
+}
+```
 
 
 
+# 十三、SpringMVC执行流程
 
+## 1、SpringMVC常用组件
+
++ `DispatcherServlet`：**前段控制器**，由框架提供
+
+  > 作用：*统一处理请求和响应，整个流程控制的中心，由它调用其他组件处理用户请求。*
+
++ `HandlerMapping`：**处理器映射器，即根据地址查找控制器方法**，由框架提供
+
+  > 作用：*根据请求的URL，method等信息查找Handler，即控制器方法*
+
++ `Handler`：**处理器，即控制器方法**，需要自己开发
+
+  > 作用：*在DispatcherServlet的控制下Handler对具体的用户请求进行处理*
+
++ `HandlerAdapter`：**处理器适配器**，由框架提供
+
+  > 作用：*通过HandlerAdapter对处理器（控制器方法）进行执行*
+
++ `ViewResolver`：**视图解析器**，由框架提供
+
+  > 作用：*进行视图解析，得到相应的视图，例如：Thymeleaf，InternalResourceView，RedirectView*
+
++ `View`：**视图**，由框架或视图技术提供
+
+  > 作用：*将模型数据通过页面展示给用户*
+
+## 2、DispatcherServlet初始化过程
+
+​	DispatcherServlet本质上是一个servlet，所以天然的遵循Servlet的生命周期。所以宏观上是Servlet生命周期进行调度。
+
+分析子类调用方法，从父类开始向下找，重写的方法，可能会变化如：`init(...) ==> init() ==> initinitServletBean() `
+
+![](img/img005.png)
+
+### a>初始化WebApplicationContext
+
+所在类：org.springframework.web.servlet.FrameworkServlet
+
+```java
+protected WebApplicationContext initWebApplicationContext() {
+    WebApplicationContext rootContext =
+        WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+    WebApplicationContext wac = null;
+
+    if (this.webApplicationContext != null) {
+        // A context instance was injected at construction time -> use it
+        wac = this.webApplicationContext;
+        if (wac instanceof ConfigurableWebApplicationContext) {
+            ConfigurableWebApplicationContext cwac = (ConfigurableWebApplicationContext) wac;
+            if (!cwac.isActive()) {
+                // The context has not yet been refreshed -> provide services such as
+                // setting the parent context, setting the application context id, etc
+                if (cwac.getParent() == null) {
+                    // The context instance was injected without an explicit parent -> set
+                    // the root application context (if any; may be null) as the parent
+                    cwac.setParent(rootContext);
+                }
+                configureAndRefreshWebApplicationContext(cwac);
+            }
+        }
+    }
+    if (wac == null) {
+        // No context instance was injected at construction time -> see if one
+        // has been registered in the servlet context. If one exists, it is assumed
+        // that the parent context (if any) has already been set and that the
+        // user has performed any initialization such as setting the context id
+        wac = findWebApplicationContext();
+    }
+    if (wac == null) {
+        // No context instance is defined for this servlet -> create a local one
+        // 创建WebApplicationContext
+        wac = createWebApplicationContext(rootContext);
+    }
+
+    if (!this.refreshEventReceived) {
+        // Either the context is not a ConfigurableApplicationContext with refresh
+        // support or the context injected at construction time had already been
+        // refreshed -> trigger initial onRefresh manually here.
+        synchronized (this.onRefreshMonitor) {
+            // 刷新WebApplicationContext
+            onRefresh(wac);
+        }
+    }
+
+    if (this.publishContext) {
+        // Publish the context as a servlet context attribute.
+        // 将IOC容器在应用域共享
+        String attrName = getServletContextAttributeName();
+        getServletContext().setAttribute(attrName, wac);
+    }
+
+    return wac;
+}
+```
+
+### b>创建WebApplicationContext
+
+所在类：org.springframework.web.servlet.FrameworkServlet
+
+```java
+protected WebApplicationContext createWebApplicationContext(@Nullable ApplicationContext parent) {
+    Class<?> contextClass = getContextClass();
+    if (!ConfigurableWebApplicationContext.class.isAssignableFrom(contextClass)) {
+        throw new ApplicationContextException(
+            "Fatal initialization error in servlet with name '" + getServletName() +
+            "': custom WebApplicationContext class [" + contextClass.getName() +
+            "] is not of type ConfigurableWebApplicationContext");
+    }
+    // 通过反射创建 IOC 容器对象
+    ConfigurableWebApplicationContext wac =
+        (ConfigurableWebApplicationContext) BeanUtils.instantiateClass(contextClass);
+
+    wac.setEnvironment(getEnvironment());
+    // 设置父容器 即将SpringMVC整合到Spring中，各管 
+    wac.setParent(parent);
+    String configLocation = getContextConfigLocation();
+    if (configLocation != null) {
+        wac.setConfigLocation(configLocation);
+    }
+    configureAndRefreshWebApplicationContext(wac);
+
+    return wac;
+}
+```
+
+### c>DispatcherServlet初始化策略
+
+FrameworkServlet创建WebApplicationContext后，刷新容器，调用onRefresh(wac)，此方法在DispatcherServlet中进行了重写，调用了initStrategies(context)方法，初始化策略，即初始化DispatcherServlet的各个组件
+
+所在类：org.springframework.web.servlet.DispatcherServlet
+
+```java
+protected void initStrategies(ApplicationContext context) {
+   initMultipartResolver(context);
+   initLocaleResolver(context);
+   initThemeResolver(context);
+   initHandlerMappings(context);
+   initHandlerAdapters(context);
+   initHandlerExceptionResolvers(context);
+   initRequestToViewNameTranslator(context);
+   initViewResolvers(context);
+   initFlashMapManager(context);
+}
+```
+
+### 
 
 
 
