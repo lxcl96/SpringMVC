@@ -87,35 +87,6 @@ Spring版本：5.3.1
         <artifactId>thymeleaf-spring5</artifactId>
         <version>3.0.12.RELEASE</version>
     </dependency>
-</dependencies><dependencies>
-    <!-- SpringMVC -->
-    <dependency>
-        <groupId>org.springframework</groupId>
-        <artifactId>spring-webmvc</artifactId>
-        <version>5.3.1</version>
-    </dependency>
-
-    <!-- 日志 -->
-    <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>1.2.3</version>
-    </dependency>
-
-    <!-- ServletAPI -->
-    <dependency>
-        <groupId>javax.servlet</groupId>
-        <artifactId>javax.servlet-api</artifactId>
-        <version>3.1.0</version>
-        <scope>provided</scope>
-    </dependency>
-
-    <!-- Spring5和Thymeleaf整合包 -->
-    <dependency>
-        <groupId>org.thymeleaf</groupId>
-        <artifactId>thymeleaf-spring5</artifactId>
-        <version>3.0.12.RELEASE</version>
-    </dependency>
 </dependencies>
 ```
 
@@ -454,8 +425,8 @@ public String success() {
 
 ```java
 /*	请求头参数格式如下：
-    headers = {"header"} 表示请求头中必须含有关建字（key）username，对属性值（value）不做要求
-    headers = {"!header"} 表示请求头中不能含有关建字（key）username
+    headers = {"username"} 表示请求头中必须含有关建字（key）username，对属性值（value）不做要求
+    headers = {"!username"} 表示请求头中不能含有关建字（key）username
     headers = {"username=admin"} 表示请求头中必须含有关建字（key）username，且属性值（value）必须为admin
     headers = {"username!=admin"} 表示请求头中必须含有关建字（key）username，且属性值（value）不能为为admin （实际情况是，除了header!=admin的其他所有访问都可以，包括没有username）
    
@@ -700,7 +671,7 @@ public String testPojo(User user) {
 
 ## ***乱码***
 
-如果是tomcat控制台：
+如果是tomcat控制台日志：
 
 tomcat控制台（Dos窗口）输出乱码的话，在tomcat的conf目录下的logging.properties文件中修改为windows编码GBK（默认utf-8）
 
@@ -1055,7 +1026,7 @@ public String testRedirect2() {
     }
 ```
 
-### ==如果我们在Spring配置文件中使用视图控制器代替某个控制器方法，那么我们写的所有控制器方法的路径都无法跳转（全部失效,除了自己配的这个）==
+### ==如果我们在Spring配置文件中使用视图控制器代替某个控制器方法，那么我们写的所有控制器方法的路径都无法跳转（全部失效,除了自己配的这个视图控制器）==
 
 ***解决方法：***
 
@@ -1378,6 +1349,20 @@ public User testResponseUser() {
 
 ## 7、ResponseEntity
 
+```java
+//直接用于
+//创建HttpHeader对象，并设置响应头信息
+MultiValueMap<String,String> httpHeaders = new HttpHeaders();
+//设计下载标记
+httpHeaders.add("Content-Disposition","attachment;filename=summer.jpg");
+
+//设置响应状态码
+HttpStatus statusCode = HttpStatus.OK;
+//创建报文对象 ResponseEntity
+is.close();
+return new ResponseEntity<byte[]>(bytes,httpHeaders,statusCode);
+```
+
 ResponseEntity用于控制器方法的返回值 类型，该控制器方法的返回值就是响应到浏览器的响应报文。（即将Java对象转化为响应报文）
 
 `可用于文件下载，因为要修改响应头，标识该文件用于下载，而非展示。`
@@ -1552,7 +1537,7 @@ Spring拦截器只对DispatcherServlet所处理的请求进行拦截
   
       <!--  方法2：此时配置的拦截器，所有的请求都会被其接收处理（拦截/放行） 包括不存在的请求地址 【bean可以用xml 也可以用注解@component】 -->
       <mvc:interceptors>
-          <ref bean="myInterceptor"></bean>  <!--该类上有注解@component-->
+          <ref bean="myInterceptor"></ref>  <!--该类上有注解@component-->
       </mvc:interceptors>
   
   
@@ -1653,7 +1638,7 @@ HandlerExceptionResolver接口的实现类有：
 
 ```xml
 <!--配置自定义异常处理-->
-<bean id="simpleMappingE ”“xceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver" >
+<bean id="simpleMappingExceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver" >
     <property name="exceptionMappings" >
         <!--   设置properties属性 -->
         <props>
@@ -1663,7 +1648,7 @@ HandlerExceptionResolver接口的实现类有：
         </props>
     </property>
 
-    <!-- 设置出现对应异常时 需要渲染的数据（Model） 默认存在request域中 value就是键key（不设置的话默认就是value=exception）  值value 就是当前的异常信息
+    <!-- 设置出现对应异常时 需要渲染的数据（Model） 默认存在request域中 value就是键key（不设置的话默认就是value=exception）  其（value就是键key）对应的值value 就是当前的异常详细信息
         仅对上面配置的要跳转异常(ArithmeticException,NullPointerException)都有效 -->
     <property name="exceptionAttribute" value="ex">
 
